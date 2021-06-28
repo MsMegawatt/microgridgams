@@ -1,0 +1,742 @@
+GAMS 34.2.0  r6925a71 Released Feb  5, 2021 DEX-DEG x86 64bit/Mac OS X - 04/12/21 22:49:00 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1  *Modified IEEE 24-bus test system
+   2  *Unit Commitment and Economic Dispatch example
+   3  *2/25/2021
+   4   
+   5  *Setting the default slash for PC users
+   7   
+   8  *Change the default slash if in UNIX (MAC users)
+  12   
+  13  * set case name for saving outputs
+  14  * note that there must be a folder with this name in 'outputs'
+  16   
+  17   
+  18  *define main sets
+  19  sets
+  20      t                   time steps (hours in one week)              /t1*t168/
+  21      n                   nodes                                       /n1*n24/
+  22      G                   generators                                  /g1*g22/
+  23      s                   battery storage                             /s1*s3/
+  24      fossilG(G)          fossil fuel generators                      /g1*g12/
+  25      coalG(fossilG)      coal generators                             /g1,g2,g10/
+  26      gasG(fossilG)       natural gas generators                      /g3*g9,g11,g12/
+  27      renG(G)             renewable generators                        /g13*g22/
+  28      slack(n)            specify a reference node for DC OPF         /n13/
+  29  ;
+  30   
+  31  *define alias for sets t and n
+  32  alias(t,tt);
+  33  alias(n,nn);
+  34   
+  35  *define any useful scalars
+  36  scalar
+  37      penalty             "--$/MWh--penalty price for unserved or dumped energy"     /1000000/
+  38      sbase               "--MVA--define per unit basis for power flow"              /100/
+  39  ;
+  40   
+  41   
+  42  *define generators' connection to nodes based on data in a csv file
+  43  set gconnect(n,G)
+  44  /
+  53  /
+  54  ;
+  55   
+  56   
+  57  *load data on fuel consumption coefficients & operational limits for generators (G)
+  58  *'a' is the marginal heat rate (MMBTU/MWh)
+  59  *'b' is the base heat rate (MMBTU/hour)
+  60  *'c' is the maximum generation capacity (MW)
+  61  *'d' is the minimum generation capacity (MW)
+  62  *'e' is the maximum upward/downward ramping (MW/hour)
+  63  *'f' is the variable operation and maintenance cost, VO&M ($/MWh)
+  64  *'g' is the startup cost ($)
+  65  *'h' is the fuel price ($/MMBTU)
+  66  *'i' is the minimum down time constraint (hours)
+  67  *'j' is the co2 of the fuel (lbs CO2 emitted per MMBTU)
+  68   
+  69  * note that not all of these are being used yet!
+  70   
+  71  table genpar(G,*)
+  74  $include data/generators24.csv
+****                               $282
+**** LINE     71 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 282  Unable to open include file
+  77  ;
+****  $463
+**** LINE     74 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 463  The column section in the previous table is missing.
+****         You may want to use $ON/OFFEMPTY
+  78   
+  79   
+  80  * assign generator parameters to more meaningful parameter names
+  81  parameter
+  82      hr_marg(G)         "--MMBTU/MWh-- marginal heat rate"
+  83      hr_base(G)         "--MMBTU/hour-- base heat rate when committed"
+  84      cap(G)             "--MW-- maximiun generation capacity"
+  85      ramp(G)            "--MW/hour-- maximum upward/downward ramping"
+  86      vom(G)             "--$/MWh-- variable operation and maintenance cost"
+  87      fuel(G)            "--$/MMBTU-- fuel price"
+  88      start_cost(G)      "--$-- start cost of generator"
+  89      min_gen(G)         "--MW-- min generation levels when committed"
+  90      min_downtime(G)    "--hours-- min amount of time a unit must be off before turning on again"
+  91  ;
+  92   
+  93  cap(G) = genpar(G, 'c') ;
+****                       $116
+**** LINE     90 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+  94  ramp(G) = genpar(G, 'e') ;
+****                        $116
+**** LINE     91 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+  95  vom(G) = genpar(G, 'f') ;
+****                       $116
+**** LINE     92 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+  96  fuel(G) = genpar(G, 'h') ;
+****                        $116
+**** LINE     93 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+  97  hr_marg(G) = genpar(G, 'a') ;
+****                           $116
+**** LINE     94 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+  98   
+  99  start_cost(G) = genpar(G, 'g');
+****                              $116
+**** LINE     96 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+ 100  min_gen(G) = genpar(G, 'd');
+****                           $116
+**** LINE     97 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+ 101  hr_base(G) = genpar(G, 'b');
+****                           $116
+**** LINE     98 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+ 102  hr_base(G) = genpar(G, 'b');
+ 103  min_downtime(g) = genpar(G, 'i')
+****                                $116
+**** LINE    100 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+ 104   
+ 105   
+ 106  *define node load participation factors (sum=1)
+ 107  parameter nodeloadfactor(n)
+ 108  /
+ 112  ,load,crit_load
+****  $338,455,465
+**** LINE      1 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 338  Unique element expected - symbol was not an element
+****         and the following text will be skipped until a proper
+****         symbol is found to recover. Remember that an UNQUOTED
+****         element has to start with a letter or digit
+****         followed by letters, digits, '+', '-' or '_'. The length
+****         is limited to 63 characters. The following words are
+****         reserved (starting symbols of a GAMS statement) and cannot
+****         be used for UNQUOTED set elements:
+****     
+****            ABORT, ACRONYM(S), ALIAS, BINARY, DISPLAY, ELSE
+****            EQUATION(S), EXECUTE, FILE(S), FOR, FREE, IF, INTEGER, LOOP
+****            MODEL(S), NEGATIVE, OPTION(S), PARAMETER(S)
+****            POSITIVE, PROCEDURE(S), PUT, PUTCLEAR, PUTCLOSE, PUTHD
+****            PUTPAGE, PUTTL, SCALAR(S), SEMICONT, SET(S), SOS1, SOS2
+****            TABLE, VARIABLE(S), WHILE
+****     
+****         QUOTED elements can contain any character. Single and
+****         double quotes can be used (starting and ending quote have
+****         to match).
+**** 455  Bad or missing delimiter while reading delimited data records
+**** 465  Too much data on this line - rest ignored
+ 113  n1,0,0
+****      $465
+**** LINE      2 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 114  n2,0,0
+****      $465
+**** LINE      3 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 115  n3,0,0
+****      $465
+**** LINE      4 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 116  n4,0,0
+****      $465
+**** LINE      5 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 117  n5,1,0.1
+****      $465
+**** LINE      6 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 118  n6,1,0.2
+****      $465
+**** LINE      7 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 119  n7,0,0
+****      $465
+**** LINE      8 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 120  n8,1,0.3
+****      $465
+**** LINE      9 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 121  n9,1,0.5
+****      $465
+**** LINE     10 INCLUDE     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+**** LINE    108 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 465  Too much data on this line - rest ignored
+ 124  /
+ 125  ;
+ 126   
+ 127   
+ 128  *define time series for every time step  (week of April 23rd, 2012)
+ 129  *'a' is total system load (MW)
+ 130  *'b' is g13 available generation capacity factor (0 to 1)
+ 131  *'c' is g14 available generation capacity factor (0 to 1)
+ 132  * and so on...
+ 133   
+ 134  *here we load data from a pre-generated GDX file, which can be created via python, R, or Matlab
+ 135  parameter ts(t,*)
+**** File: /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/timeseries24.gdx
+**** Msg : No such file or directory
+ 136  $gdxin "data/timeseries24.gdx"
+****                               $510
+**** LINE    123 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 510  Unable to open gdx file for $GDXIN
+ 137  $load ts
+****      $502
+**** LINE    124 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 502  GDXIN  file not open - ignore rest of line
+ 138  ;
+ 139   
+ 140  *allocate load to each node
+ 141  parameter load(n,t);
+ 142  load(n,t) = nodeloadfactor(n)*ts(t,'a');
+****                                 $141
+**** LINE    129 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 143   
+ 144  *link capacity factors of renewable generators to timeseries data
+ 145  parameter cf(renG,t);
+ 146  cf('g13',t) = ts(t,'b');
+ 147  cf('g14',t) = ts(t,'c');
+ 148  cf('g15',t) = ts(t,'d');
+ 149  cf('g16',t) = ts(t,'e');
+ 150  cf('g17',t) = ts(t,'f');
+ 151  cf('g18',t) = ts(t,'g');
+ 152  cf('g19',t) = ts(t,'h');
+ 153  cf('g20',t) = ts(t,'i');
+ 154  cf('g21',t) = ts(t,'j');
+****                       $116
+**** LINE    141 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+ 155  cf('g22',t) = ts(t,'k');
+****                       $116
+**** LINE    142 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 116  Label is unknown
+ 156   
+ 157  *define line data (reactance & maximum transmission capacity)
+ 158  *for the purpose of this example, we will ignore reactance
+ 159   
+ 160  table line(n,nn,*)
+ 176  ;
+ 177   
+ 178   
+ 179  *define lines interconnecting nodes (use line data set)
+ 180  set nconnect(n,nn) ;
+ 181  *if there is data on the line, those two nodes are connected
+ 182  nconnect(n,nn)$[line(n, nn, "lim")] = YES;
+ 183  *define all lines to be bi-directional lines
+ 184  nconnect(n,nn)$[nconnect(nn,n)]=1;
+ 185   
+ 186  *define line properties for both flow directions
+ 187  line(n,nn,'lim')$[line(n,nn,'lim')=0] = line(nn,n,'lim') ;
+ 188  line(n,nn,'x')$[line(n,nn,'x')=0] = line(nn,n,'x') ;
+ 189   
+ 190  *compute line susceptance from reactance data
+ 191  line(n,nn,'B')$nconnect(n,nn) = 1/line(n,nn,'x');
+ 192   
+ 193  * storage parameters
+ 194   
+ 195  * specify which nodes have storage devices
+ 196  set sconnect(n,s) /n13.s1,  n18.s2, n7.s3/ ;
+ 197   
+ 198  * Storage capacity (MW)
+ 199  parameter scap(s)
+ 200  /s1 125
+ 201   s2 100
+ 202   s3 50 /
+ 203  ;
+ 204   
+ 205  * Storage energy (MWh)
+ 206  parameter senergy(s)
+ 207  /s1 500
+ 208   s2 400
+ 209   s3 200 /
+ 210  ;
+ 211   
+ 212  * Storage roundtrip efficiency
+ 213  scalar seff / 0.75 / ;
+ 214   
+ 215   
+ 216  *define variables
+ 217  variables
+ 218      cost                    "--$-- the operational cost during the entire optimization horizon"
+ 219      delta(n,t)              "--radians-- voltage angle at node n and time t"
+ 220      flow(n,nn,t)            "--MW-- the power flow between nodes n and nn at time t"
+ 221  ;
+ 222   
+ 223  *these variables defined for domain x >= 0
+ 224  positive variables
+ 225      gen(G,t)                "--MW-- generation of generator G at time t"
+ 226      unservedenergy(n,t)     "--MW-- unserved energy of node n at time t"
+ 227      dumpenergy(G,t)         "--MW-- excess generation of node n at time t"
+ 228      soc(s,t)                "--MWh-- state of charge of storage device at time t"
+ 229      sgen(s,t)               "--MW-- generation storage s at time t"
+ 230      sload(s,t)              "--MW-- charging of storage s at time t"
+ 231  ;
+ 232   
+ 233  * define any integer variables for unit commitment
+ 234  binary variables
+ 235      on(fossilG,t)               "on/off status of fossil units"
+ 236      turnon(fossilG,t)           "whether a fossil unit is started in time period t"
+ 237      turnoff(fossilG,t)          "whether a fossil unit is decommitted in time period t"
+ 238  ;
+ 239   
+ 240  * define objective function and constraint equations
+ 241  equations
+ 242      eq_cost                         "--$-- objective function"
+ 243      eq_load_balance                 "--MW-- ensure that generation equals load in all hours"
+ 244      eq_power_flow                   "--MVA-- dc-opf powerflow calculation"
+ 245      eq_rampup                       "--MW-- upward ramping constraint on generators"
+ 246      eq_rampdown                     "--MW-- pward ramping constraint on generators"
+ 247      eq_max_fossil                   "--MW-- installed capacity constraint on fossil generators"
+ 248      eq_max_re_gen                   "--MW-- limit renewable generation to available resource"
+ 249      eq_mingen                       "--MW-- enforce min generation requirements for committed fossil"
+ 250      eq_commitment                   "--unitless-- defines relationship between on, turnon, and turnoff"
+ 251      eq_onoff                        "--unitless-- ensure units do not turnon and turnoff in the same period"
+ 252      eq_min_downtime                 "--unitless-- min downtime constraint for periods t <= T - DT"
+ 253      eq_min_downtime2                "--unitless-- min downtime constraint for periods t > T - DT"
+ 254      soceq1, soceq2, soceq3, soceq4, sgenmax, sloadmax "storage equations"
+ 255  ;
+ 256   
+ 257   
+ 258   
+ 259  * objective funtion definition
+ 260  eq_cost..
+ 261  * total operational costs =
+ 262      cost
+ 263   
+ 264      =e=
+ 265  * sum of costs over all time periods
+ 266      sum(t,
+ 267  * vom costs of all generators in each hour
+ 268        sum(G, vom(G)*gen(G,t))
+ 269  * fuel costs of generators that use fuel
+ 270        + sum(fossilG, fuel(fossilG)*(hr_base(fossilG)*on(fossilG, t) +
+ 271                                      hr_marg(fossilG)*gen(fossilG,t)))
+ 272  * start up costs
+ 273        + sum(fossilG, turnon(fossilG,t) * start_cost(fossilG))
+ 274  * costs of unserved load
+ 275        + sum(n,unservedenergy(n,t))*penalty
+ 276  * costs of dumped energy
+ 277        + sum(G,dumpenergy(G,t))*penalty
+ 278      )
+ 279  ;
+ 280   
+ 281  * ensure that generation = load at every node at every time step
+ 282  eq_load_balance(n,t)..
+ 283  * generation at a node
+ 284      sum(G$gconnect(n,G), gen(G,t))
+ 285  * plus imports from other nodes, minus exports to other nodes
+ 286  * now defining flows to be bidirectionl, so only need one statemnt here
+ 287      + sum(nn$nconnect(n,nn), flow(nn,n,t))
+ 288  * plus unserved energy
+ 289      + unservedenergy(n,t)
+ 290  * less any dumped energy from excess generation
+ 291      - sum(G$gconnect(n,G), dumpenergy(G,t))
+ 292  * plus generation from storage
+ 293      + sum(s$sconnect(n,s), sgen(s,t))
+ 294   
+ 295      =e=
+ 296   
+ 297  * must equal load at each node in each time step
+ 298      load(n,t)
+ 299  * plus load from storage charging
+ 300      + sum(s$sconnect(n,s), sload(s,t))
+ 301   
+ 302  ;
+ 303   
+ 304   
+ 305  * power flow calculation (in  per unit values)
+ 306  eq_power_flow(n,nn,t)$[nconnect(n,nn)]..
+ 307      flow(n,nn,t) / sbase
+ 308   
+ 309      =e=
+ 310   
+ 311      line(n,nn,'B')*(delta(n,t)-delta(nn,t))
+ 312  ;
+ 313   
+ 314   
+ 315  * max ramp up constraint for fossil generators (defined only for t > 1)
+ 316  eq_rampup(fossilG,t)$[ord(t) GT 1]..
+ 317   
+ 318      gen(fossilG,t) - gen(fossilG,t-1)
+ 319   
+ 320      =l=
+ 321   
+ 322      on(fossilG,t)*ramp(fossilG) + turnon(fossilG,t)*min_gen(fossilG)
+ 323  ;
+ 324   
+ 325  * max ramp down constraint for fossil generators (defined only for t > 1)
+ 326  eq_rampdown(fossilG,t)$[ord(t) GT 1]..
+ 327   
+ 328      gen(fossilG,t-1) - gen(fossilG,t)
+ 329   
+ 330      =l=
+ 331   
+ 332      on(fossilG,t)*ramp(fossilG) + turnoff(fossilG,t)*min_gen(fossilG)
+ 333  ;
+ 334   
+ 335  * enfore max capacity constraint for fossil generators based on installed capacity
+ 336  eq_max_fossil(fossilG,t)..
+ 337      gen(fossilG,t)
+ 338   
+ 339      =l=
+ 340   
+ 341      on(fossilG, t)*cap(fossilG)
+ 342  ;
+ 343   
+ 344   
+ 345  * enforce max capacity constraint for renewable generators based on resource availability
+ 346  eq_max_re_gen(renG,t)..
+ 347   
+ 348      gen(renG,t)
+ 349   
+ 350      =l=
+ 351   
+ 352      cap(renG)*cf(renG,t)
+ 353  ;
+ 354   
+ 355   
+ 356  * enforce minimum generation of online generators in unit commitment
+ 357  eq_mingen(fossilG,t)..
+ 358      gen(fossilG,t)
+ 359   
+ 360      =g=
+ 361   
+ 362      on(fossilG,t)*min_gen(fossilG)
+ 363  ;
+ 364   
+ 365  * define unit commitment logic (relationshipp between on variable and start/stop decisions)
+ 366  eq_commitment(fossilG,t)$[ord(t) GT 1]..
+ 367   
+ 368      on(fossilG,t)
+ 369   
+ 370      =e=
+ 371   
+ 372      on(fossilG,t-1) + turnon(fossilG,t) - turnoff(fossilG,t)
+ 373  ;
+ 374   
+ 375  * units cannot start and shut down in the same period
+ 376  eq_onoff(fossilG,t)..
+ 377   
+ 378      turnon(fossilG,t) + turnoff(fossilG,t)
+ 379   
+ 380      =l=
+ 381   
+ 382      1
+ 383  ;
+ 384   
+ 385   
+ 386  * Defining minimum downtime constraint by ensuring that a unit cannot be on until
+ 387  * min_downtime number of hours after a turnoff decision
+ 388  eq_min_downtime(fossilG,t)$[ord(t) <= card(t) - min_downtime(fossilG) + 1]..
+ 389      sum(tt$[(ord(tt)>=ord(t) and (ord(tt)<(ord(t)+min_downtime(fossilG))))], 1 - on(fossilG,tt))
+ 390   
+ 391      =g=
+ 392   
+ 393      min_downtime(fossilG) * turnoff(fossilG,t)
+ 394  ;
+ 395   
+ 396  * similar min down constraint, but tailored for the end of the time window
+ 397  eq_min_downtime2(fossilG,t)$[ord(t) > card(t) - min_downtime(fossilG) + 1]..
+ 398      1 - on(fossilG,t) - turnoff(fossilG,t)
+ 399   
+ 400      =g=
+ 401   
+ 402      0
+ 403   
+ 404  ;
+ 405   
+ 406  *Defining state of charge of every storage at every time step (4 steps)
+ 407   
+ 408  * part 1: storage starts out (i.e. t=1) at 50% charge
+ 409  soceq1(s,t)$(ord(t) = 1)..
+ 410   
+ 411      soc(s,t)
+ 412   
+ 413      =e=
+ 414   
+ 415      0.5*senergy(s)
+ 416  ;
+ 417   
+ 418  * part 2: for t>1, storage charge in period t equals the
+ 419  * charge in the last period (t-1) less discharge + charge, accounting for efficiency losses
+ 420  soceq2(s,t)$(ord(t) > 1 and ord(t) < card(t))..
+ 421   
+ 422      soc(s,t)
+ 423   
+ 424      =e=
+ 425   
+ 426      soc(s,t-1) - sgen(s,t-1) + seff*sload(s,t-1)
+ 427   
+ 428  ;
+ 429   
+ 430  * part 3: in the last period, storage must return to 50% charge
+ 431  soceq3(s,t)$(ord(t) = card(t))..
+ 432   
+ 433      soc(s,t) + seff*sload(s,t) - sgen(s,t)
+ 434   
+ 435      =e=
+ 436   
+ 437      0.5*senergy(s)
+ 438  ;
+ 439   
+ 440  * part 4: state of charge must always be less than the energy capacity of the battery
+ 441  soceq4(s,t)..
+ 442   
+ 443      soc(s,t)
+ 444   
+ 445      =l=
+ 446   
+ 447      senergy(s)
+ 448  ;
+ 449   
+ 450  *Defining maximum maximum storage generation and load
+ 451  sgenmax(s,t)..
+ 452      sgen(s,t)
+ 453      =l=
+ 454      scap(s)
+ 455  ;
+ 456   
+ 457  sloadmax(s,t)..
+ 458      sload(s,t)
+ 459      =l=
+ 460      scap(s)
+ 461  ;
+ 462   
+ 463   
+ 464   
+ 465   
+ 466  *define model that includes all equations
+ 467  Model storage /all/;
+ 468   
+ 469  *Defining voltage angle limits
+ 470  delta.lo(n,t) = -pi;
+ 471  delta.up(n,t) = pi;
+ 472   
+ 473  * defining voltage angle of reference/slack bus
+ 474  delta.fx(slack,t) = 0;
+ 475   
+ 476  * define line limits
+ 477  flow.up(n,nn,t)$nconnect(n,nn) = line(n,nn,'lim');
+ 478  flow.lo(n,nn,t)$nconnect(n,nn) = -line(n,nn,'lim');
+ 479   
+ 480  *Defining maximum MIP GAP
+ 481  option optcr = 0.001;
+ 482   
+ 483  *call solve statement
+ 484  Solve storage using MIP min cost;
+****                                  $257
+**** LINE    461 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 257  Solve statement not checked because of previous errors
+ 485   
+ 486  *process outputs
+ 487   
+ 488  set
+ 489      cost_cat            /vom, fuel, start/
+ 490      penalty_cat         /use, dump/
+ 491      on_cat              /commit, start, stop /
+ 492  ;
+ 493   
+ 494  parameters
+ 495      generation(G,t)
+ 496      storage_gen(s,t)
+ 497      storage_charge(s,t)
+ 498      storage_soc(s,t)
+ 499      lineflow(n,nn,t)
+ 500      LMP(n,t)
+ 501      use(n,t)
+ 502      dump(G,t)
+ 503      costs(G,t,cost_cat)
+ 504      penalties(n,t,penalty_cat)
+ 505      commit(fossilG,t,on_cat)
+ 506      curtailment(renG,t)
+ 507  ;
+ 508   
+ 509  * extract generation results
+ 510  generation(G,t) = gen.l(G,t) ;
+****                        $141
+**** LINE    487 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 511   
+ 512  * for lineflow, define in reference direction only
+ 513  lineflow(n,nn,t)$[ord(n) < ord(nn)] = flow.l(n,nn,t);
+ 514   
+ 515  use(n,t) = unservedenergy.l(n,t) ;
+****                            $141
+**** LINE    492 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 516  dump(G,t) = dumpenergy.l(G,t) ;
+****                         $141
+**** LINE    493 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 517   
+ 518  * lmps are the marginal on the load balance equation
+ 519  LMP(n,t) = eq_load_balance.m(n,t) ;
+****                             $141
+**** LINE    496 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 520   
+ 521  * total cost metrics
+ 522  costs(G,t,"vom") = vom(G)*gen.l(G,t) ;
+ 523  costs(fossilG,t,"fuel") = fuel(fossilG)*(hr_marg(fossilG)*gen.l(fossilG,t) + hr_base(fossilG)*on.l(fossilG, t));
+****                                                                                                   $141
+**** LINE    500 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 524  costs(fossilG,t,"start") = turnon.l(fossilG,t) * start_cost(fossilG);
+****                                    $141
+**** LINE    501 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 525   
+ 526   
+ 527  penalties(n,t,"use") = unservedenergy.l(n,t)*penalty ;
+ 528  penalties(n,t, "dump") = sum(G$gconnect(n,G), dumpenergy.l(G,t)*penalty) ;
+ 529   
+ 530  commit(fossilG,t,"commit") = on.l(fossilG,t) ;
+ 531  commit(fossilG,t,"start") = turnon.l(fossilG,t);
+ 532  commit(fossilG,t,"stop") = turnoff.l(fossilG,t);
+****                                     $141
+**** LINE    509 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 533   
+ 534  * calculate curtailment levels
+ 535  curtailment(renG,t) = cap(renG)*cf(renG,t) - gen.l(renG, t);
+ 536   
+ 537  * storage results
+ 538  storage_gen(s,t) = sgen.l(s,t) ;
+****                          $141
+**** LINE    515 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 539  storage_charge(s,t) = sload.l(s,t) ;
+****                              $141
+**** LINE    516 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 540  storage_soc(s,t) = soc.l(s,t) ;
+****                         $141
+**** LINE    517 INPUT       /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+ 541   
+ 542   
+ 543  * save results to a gdx file
+ 544  execute_unload "outputs/storage/dispatch_results.gdx"
+ 545      generation, lineflow, LMP, use, dump,
+ 546      costs, penalties, commit, delta, flow, curtailment,
+ 547      storage_gen, storage_charge, storage_soc
+ 548  ;
+ 549   
+ 550  * extract results to csv files
+ 551   
+ 552  * for PC users
+ 553  * execute 'gdxxrw.exe outputs%ds%dispatch_results.gdx o=generation.csv par=generation'
+ 554  * execute 'gdxxrw.exe outputs%ds%dispatch_results.gdx o=lineflow.csv par=lineflow'
+ 555  * execute 'gdxxrw.exe outputs%ds%dispatch_results.gdx o=LMP.csv par=LMP'
+ 556   
+ 557  * MAC users should run the separate "save_results.gms" script
+
+**** 39 ERROR(S)   0 WARNING(S)
+GAMS 34.2.0  r6925a71 Released Feb  5, 2021 DEX-DEG x86 64bit/Mac OS X - 04/12/21 22:49:00 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Include File Summary
+
+
+   SEQ   GLOBAL TYPE      PARENT   LOCAL  FILENAME
+
+     1        1 INPUT          0       0  /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+     2       47 INCLUDE        1      47  ./Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/gen_nodes.csv
+     3      111 INCLUDE        1     108  ./Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/nodeloadfactors.csv
+     4      163 INCLUDE        1     150  ./Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/data/line_data_full.csv
+
+
+COMPILATION TIME     =        0.029 SECONDS      3 MB  34.2.0 r6925a71 DEX-DEG
+
+
+USER: Course License                                 G201230/0001AO-GEN
+      University of Colorado at Boulder                         DCE1058
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.gms
+Output     /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/gen24_Storage.lst
+
+**** USER ERROR(S) ENCOUNTERED

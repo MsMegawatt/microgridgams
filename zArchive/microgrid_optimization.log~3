@@ -1,0 +1,40 @@
+
+--- Job microgrid_optimization.gms Start 04/12/21 23:13:15 34.2.0 r6925a71 DEX-DEG x86 64bit/Mac OS X
+--- Applying:
+    /Library/Frameworks/GAMS.framework/Versions/34/Resources/gmsprmun.txt
+--- GAMS Parameters defined
+    Input /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/microgrid_optimization.gms
+    PageSize 0
+    ScrDir /Users/megatronics/Desktop/CU_Boulder/Classes/Spring_2021/PSPO/Project_2/Code/225b/
+    SysDir /Library/Frameworks/GAMS.framework/Versions/34/Resources/
+    LogOption 3
+    ErrMsg 1
+    ErrorLog 99
+    IDE 1
+    LstTitleLeftAligned 1
+Licensee: Course License                                 G201230/0001AO-GEN
+          University of Colorado at Boulder                         DCE1058
+          /Users/megatronics/Library/Application Support/GAMS/gamslice.txt
+          Course license for use within the course and related course work
+GAMS 34.2.0   Copyright (C) 1987-2021 GAMS Development. All rights reserved
+--- Starting compilation
+--- microgrid_optimization.gms(61) 3 Mb
+--- . gen_nodes.csv(3) 3 Mb
+--- microgrid_optimization.gms(72) 3 Mb
+--- . generators9.csv(4) 3 Mb
+--- microgrid_optimization.gms(108) 3 Mb
+--- . nodeloadfactors.csv(10) 3 Mb
+--- microgrid_optimization.gms(125) 3 Mb
+--- . timeseries_15min.csv(673) 3 Mb
+--- microgrid_optimization.gms(149) 3 Mb
+--- . line_data_full.csv(10) 3 Mb
+--- microgrid_optimization.gms(486) 3 Mb
+--- Starting execution: elapsed 0:00:00.018
+--- microgrid_optimization.gms(867) 4 Mb
+*** Error at line 867: division by zero (0)
+--- microgrid_optimization.gms(1182) 5 Mb 1 Error
+--- Generating MIP model MGResults
+*** SOLVE aborted
+--- microgrid_optimization.gms(1182) 5 Mb 1 Error
+*** Status: Execution error(s)
+--- Job microgrid_optimization.gms Stop 04/12/21 23:13:15 elapsed 0:00:00.037

@@ -1,0 +1,74 @@
+B 3 C o m p i l a t i o n
+B 576 Include File Summary
+B 593 E x e c u t i o n
+I 593 ts
+I 1272 time_fault
+B 1280 Equation Listing    SOLVE MGResults Using MIP From line 1234
+D 1283 eq_cost
+D 1324 eq_load_balance
+D 1335 eq_power_flow
+D 1346 eq_rampup
+D 1357 eq_rampdown
+D 1368 eq_max_fossil
+D 1379 eq_max_re_gen
+D 1390 eq_mingen
+D 1401 eq_commitment
+D 1412 eq_onoff
+D 1423 eq_min_downtime
+D 1434 eq_min_downtime2
+D 1445 soceq1
+D 1450 soceq2
+D 1461 soceq3
+D 1466 soceq4
+D 1477 soceq5
+D 1488 sgenmax
+D 1499 sloadmax
+B 1511 Column Listing      SOLVE MGResults Using MIP From line 1234
+E 1514 cost
+E 1521 delta
+E 1540 flow
+E 1559 gen
+E 1594 dumpedenergy
+E 1613 unservedload
+E 1632 unservedcritload
+E 1651 soc
+E 1676 sgen
+E 1698 sload
+E 1720 on
+E 1757 turnon
+E 1780 turnoff
+B 1804 Model Statistics    SOLVE MGResults Using MIP From line 1234
+B 1817 Solution Report     SOLVE MGResults Using MIP From line 1234
+F 1862 eq_cost
+F 1866 eq_load_balance
+F 7919 eq_power_flow
+F 20020 eq_rampup
+F 22038 eq_rampdown
+F 24056 eq_max_fossil
+F 26077 eq_max_re_gen
+F 26754 eq_mingen
+F 28775 eq_commitment
+F 30793 eq_onoff
+F 32814 eq_min_downtime
+F 34798 eq_min_downtime2
+F 34840 soceq1
+F 34846 soceq2
+F 35521 soceq3
+F 35527 soceq4
+F 36204 soceq5
+F 36881 sgenmax
+F 37558 sloadmax
+G 38237 cost
+G 38241 delta
+G 44294 flow
+G 56395 gen
+G 59088 dumpedenergy
+G 61781 unservedload
+G 67834 unservedcritload
+G 73887 soc
+G 74564 sgen
+G 75241 sload
+G 75918 on
+G 77939 turnon
+G 79960 turnoff
+B 81987 E x e c u t i o n
